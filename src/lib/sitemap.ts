@@ -47,6 +47,6 @@ export async function extractSitemapUrls(sitemapUrl: string): Promise<PageToTest
     if (error.response) {
       console.error('Sitemap fetch failed with status:', error.response.status);
     }
-    return [];
+    throw new Error('Failed to fetch or parse sitemap. Check the console for more details.');
   }
 }

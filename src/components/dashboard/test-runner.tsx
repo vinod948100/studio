@@ -20,11 +20,13 @@ import {
   Rocket,
   Search,
   XCircle,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
 import { extractSitemapUrls } from '@/lib/sitemap';
+import { useToast } from '@/hooks/use-toast';
 
 interface TestRunnerProps {
   onComplete: () => void;
@@ -35,6 +37,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [sitemapUrl, setSitemapUrl] = useState('https://www.truckopedia.com/sitemap.xml');
   const [isFetchingPages, setIsFetchingPages] = useState(false);
+  const { toast } = useToast();
 
   const totalTests = results.length;
   const completedTests = results.filter(
@@ -56,6 +59,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
       const log = await runLighthouseTestForPage(test.page);
       updateResult(index, { status: 'success', log });
     } catch (error: any) {
+      console.error(`Test failed for ${test.page.url}:`, error);
       updateResult(index, { status: 'failed', log: error.message || 'An unknown error occurred.' });
     }
   };
@@ -65,9 +69,21 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
     setResults([]);
     try {
       const pages = await extractSitemapUrls(sitemapUrl);
+       if (pages.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Sitemap Error",
+          description: "Could not fetch any pages from the sitemap. Please check the URL and try again.",
+        })
+      }
       setResults(pages.map(page => ({ page, status: 'pending', log: 'Waiting to start...', attempt: 0 })));
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Failed to Fetch Sitemap",
+        description: error.message || "An unknown error occurred while fetching the sitemap.",
+      })
     } finally {
       setIsFetchingPages(false);
     }
@@ -136,13 +152,13 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
             />
             <Button onClick={handleFetchPages} disabled={isFetchingPages || isRunning || !sitemapUrl}>
                 {isFetchingPages ? <Loader className="animate-spin" /> : <Search />}
-                Fetch Pages
+                <span className="ml-2 hidden md:inline">Fetch Pages</span>
             </Button>
         </div>
 
         {isComplete ? (
            <Alert variant={failedTests > 0 ? "destructive" : "default"}>
-            <Rocket className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <AlertTitle>Test Run Complete!</AlertTitle>
             <AlertDescription>
               {totalTests - failedTests} tests passed out of {totalTests}.
@@ -160,7 +176,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
 
         <div className="flex flex-wrap gap-2">
            {!isRunning && !isComplete && totalTests > 0 && (
-            <Button onClick={handleRunAll}>
+            <Button onClick={handleRunAll} disabled={results.every(r => r.status === 'success')}>
               <Play /> Run All Tests
             </Button>
           )}
@@ -174,13 +190,13 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
               <RefreshCw /> Retry {failedTests} Failed Test{failedTests > 1 ? 's' : ''}
              </Button>
            )}
-          {!isRunning && isComplete && (
+          {(isComplete || (totalTests > 0 && !isRunning)) && (
             <>
-             <Button onClick={() => onComplete()}>
+             <Button onClick={() => onComplete()} variant="secondary">
                 <ChevronRight/> View Reports
             </Button>
              <Button onClick={handleReset} variant="outline">
-                <RefreshCw/> Run Again
+                <RefreshCw/> Run New Test
             </Button>
             </>
           )}
@@ -188,7 +204,8 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
 
         <ScrollArea className="h-72 rounded-md border">
           <div className="p-4 space-y-4">
-             {results.length === 0 && !isFetchingPages && <div className="text-center text-muted-foreground">Enter a sitemap URL and click "Fetch Pages" to begin.</div>}
+             {results.length === 0 && !isFetchingPages && <div className="text-center text-muted-foreground py-10">Enter a sitemap URL and click "Fetch Pages" to begin.</div>}
+             {isFetchingPages && <div className="text-center text-muted-foreground py-10 flex items-center justify-center gap-2"><Loader className="animate-spin" /> Fetching pages...</div>}
              {results.map((result, index) => (
               <div key={index} className="flex items-start gap-4">
                 <div className="mt-1">{getStatusIcon(result.status)}</div>
