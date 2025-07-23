@@ -62,31 +62,19 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
-      // The response from the API should be JSON.
-      // If the server has a catastrophic error, it might return HTML (e.g., a 500 error page).
-      // We need to handle both cases.
-      const responseText = await response.text();
       if (!response.ok) {
+        // Try to parse error response as JSON, but fallback if it's not
         try {
-          // Try to parse as JSON first, as our API route should return JSON errors.
-          const errorData = JSON.parse(responseText);
+          const errorData = await response.json();
           throw new Error(errorData.message || 'An unknown API error occurred.');
         } catch (e) {
-          // If parsing fails, it's not a valid JSON response.
-          // This happens when the server returns a generic HTML error page.
-          console.error("Received non-JSON error response from server:", responseText);
-          throw new Error('An internal server error occurred. Check the server logs for details.');
+          console.error(`Received non-JSON error response from server for ${test.page.url}. Status: ${response.status}`);
+          throw new Error('An internal server error occurred. Check server logs for details.');
         }
       }
 
-      // If the response was OK, it should contain success JSON data.
-      try {
-        const data = JSON.parse(responseText);
-        updateResult(index, { status: 'success', log: data.message });
-      } catch (e) {
-        console.error("Failed to parse success response from server:", responseText);
-        throw new Error('Received an invalid success response from the server.');
-      }
+      const data = await response.json();
+      updateResult(index, { status: 'success', log: data.message });
 
     } catch (error: any) {
       console.error(`Test failed for ${test.page.url}:`, error);
@@ -126,6 +114,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
       .map((result, index) => ({ result, index }))
       .filter(({ result }) => result.status !== 'success');
 
+    // Run tests in parallel
     const testPromises = testsToRun.map(({ result, index }) => runTest(result, index));
     
     await Promise.all(testPromises);
