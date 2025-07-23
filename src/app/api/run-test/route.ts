@@ -44,6 +44,13 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('API Error:', error);
+    // Check if it's a Firebase permission error
+    if (error.code === 'permission-denied' || (error.message && error.message.includes('permission-denied'))) {
+       return NextResponse.json(
+        { message: 'Firestore permission denied. Please check your security rules.' },
+        { status: 500 }
+      );
+    }
     const errorMessage = error.message || 'An unknown internal server error occurred.';
     return NextResponse.json({ message: `An internal server error occurred: ${errorMessage}` }, { status: 500 });
   }
