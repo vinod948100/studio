@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PagePerformance, NetworkPerformance } from '@/lib/types';
@@ -82,34 +83,34 @@ function VitalsHeader() {
   return (
     <>
       {vitals.map((vital, index) => (
-        <Tooltip key={`4g-${index}`}>
-          <TooltipTrigger asChild>
-            <TableHead className="text-center">
-              <div className="flex items-center justify-center gap-2">
+        <TableHead key={`4g-${index}`} className="text-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex cursor-help items-center justify-center gap-2">
                 <vital.icon className="h-4 w-4" />
                 <span>4G</span>
               </div>
-            </TableHead>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{vital.label} (4G)</p>
-          </TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{vital.label} (4G)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TableHead>
       ))}
       {vitals.map((vital, index) => (
-        <Tooltip key={`3g-${index}`}>
-          <TooltipTrigger asChild>
-            <TableHead className="text-center">
-             <div className="flex items-center justify-center gap-2">
+        <TableHead key={`3g-${index}`} className="text-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex cursor-help items-center justify-center gap-2">
                 <vital.icon className="h-4 w-4" />
                 <span>3G</span>
               </div>
-            </TableHead>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{vital.label} (Fast 3G)</p>
-          </TooltipContent>
-        </Tooltip>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{vital.label} (Fast 3G)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TableHead>
       ))}
     </>
   );
