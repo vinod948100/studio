@@ -91,24 +91,25 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
 
   const handleRunAll = async () => {
     setIsRunning(true);
-    const pendingTests = results.map((_, i) => i);
-    for (const index of pendingTests) {
-      if (results[index].status !== 'success') {
-         await runTest(results[index], index);
-      }
-    }
+    const testsToRun = results
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status !== 'success');
+
+    const testPromises = testsToRun.map(({ result, index }) => runTest(result, index));
+    
+    await Promise.all(testPromises);
     setIsRunning(false);
   };
 
   const handleRetryFailed = async () => {
     setIsRunning(true);
-    const failedTestIndices = results
-      .map((r, i) => (r.status === 'failed' ? i : -1))
-      .filter((i) => i !== -1);
+    const failedTests = results
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status === 'failed');
+
+    const testPromises = failedTests.map(({ result, index }) => runTest(result, index));
     
-    for (const index of failedTestIndices) {
-      await runTest(results[index], index);
-    }
+    await Promise.all(testPromises);
     setIsRunning(false);
   };
   
@@ -169,7 +170,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
           totalTests > 0 && <div className="space-y-2">
             <Progress value={progress} />
             <p className="text-sm text-muted-foreground">
-              {isRunning ? `Running test ${completedTests + 1} of ${totalTests}...` : `Completed ${completedTests} of ${totalTests} tests.`}
+              {isRunning ? `Running tests... (${completedTests}/${totalTests} complete)` : `Completed ${completedTests} of ${totalTests} tests.`}
             </p>
           </div>
         )}
@@ -186,7 +187,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
             </Button>
           )}
            {!isRunning && isComplete && failedTests > 0 && (
-             <Button onClick={handleRetryFailed} variant="destructive">
+             <Button onClick={handleRetryFailed} variant="outline">
               <RefreshCw /> Retry {failedTests} Failed Test{failedTests > 1 ? 's' : ''}
              </Button>
            )}
