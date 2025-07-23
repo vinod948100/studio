@@ -82,7 +82,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
       toast({
         variant: "destructive",
         title: "Failed to Fetch Sitemap",
-        description: error.message || "An unknown error occurred while fetching the sitemap.",
+        description: `An error occurred while fetching the sitemap. Please check if the URL is correct and accessible. Details: ${error.message}`,
       })
     } finally {
       setIsFetchingPages(false);
