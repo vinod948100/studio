@@ -21,34 +21,14 @@ import {
 import { Input } from '../ui/input';
 import { Calendar, Clock, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { runLighthouseTests } from '@/ai/flows/run-lighthouse-flow';
 import { useState } from 'react';
+
+// Note: The run now functionality has been moved to the new TestRunner component.
+// This dialog is now for demonstration of a scheduled run config.
 
 export function ScheduleDialog() {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-
-  const handleRunNow = async () => {
-    setLoading(true);
-    try {
-      await runLighthouseTests();
-      toast({
-        title: 'Tests Running',
-        description: 'Lighthouse tests are running in the background. The data will be updated shortly.',
-      });
-      // Optionally, you can trigger a refresh of the data here or rely on Firestore real-time updates.
-      window.location.reload();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to start Lighthouse tests.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   const handleSave = () => {
     toast({
       title: 'Schedule Saved',
@@ -68,7 +48,7 @@ export function ScheduleDialog() {
         <DialogHeader>
           <DialogTitle className="font-headline">Schedule Tests</DialogTitle>
           <DialogDescription>
-            Set up a recurring schedule to automatically run performance tests, or run them now.
+            Set up a recurring schedule to automatically run performance tests.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -95,10 +75,6 @@ export function ScheduleDialog() {
           </div>
         </div>
         <DialogFooter>
-           <Button type="button" variant="secondary" onClick={handleRunNow} disabled={loading}>
-            {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
-            Run Now
-          </Button>
           <Button type="submit" onClick={handleSave}>
             <Calendar className="mr-2 h-4 w-4" />
             Save Schedule

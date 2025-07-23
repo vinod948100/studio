@@ -2,14 +2,14 @@
 /**
  * @fileOverview A flow to run Lighthouse tests and save the results to Firestore.
  * 
- * - runLighthouseTests - A function that runs lighthouse tests and saves the data to firestore.
+ * - runLighthouseTestForPage - A function that runs a lighthouse test for a single page.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { PerformanceMetrics, PagePerformance } from '@/lib/types';
+import type { PerformanceMetrics, PagePerformance, PageToTest } from '@/lib/types';
 
 
 const createRandomMetrics = (baseScore: number): PerformanceMetrics => ({
@@ -20,64 +20,56 @@ const createRandomMetrics = (baseScore: number): PerformanceMetrics => ({
   cls: parseFloat((Math.random() * 0.15).toFixed(3)),
 });
 
-const pagesToTest = [
-  {
-    reportPath: 'homepage',
-    url: 'https://www.truckopedia.com/',
-  },
-  {
-    reportPath: 'about-us',
-    url: 'https://www.truckopedia.com/about-us',
-  },
-  {
-    reportPath: 'contact',
-    url: 'https://www.truckopedia.com/contact',
-  },
-    {
-    reportPath: 'blog/best-trucks-2024',
-    url: 'https://www.truckopedia.com/blog/best-trucks-2024',
-  },
-  {
-    reportPath: 'gallery',
-    url: 'https://www.truckopedia.com/gallery',
-  },
-];
+const LighthouseInputSchema = z.object({
+  page: z.object({
+    reportPath: z.string(),
+    url: z.string(),
+  }),
+  // Adding a failure simulation parameter
+  shouldFail: z.boolean().optional(),
+});
 
 
 const runLighthouseFlow = ai.defineFlow(
   {
     name: 'runLighthouseFlow',
-    inputSchema: z.void(),
-    outputSchema: z.void(),
+    inputSchema: LighthouseInputSchema,
+    outputSchema: z.string(),
   },
-  async () => {
-    console.log('Running Lighthouse tests...');
-    
-    const promises = pagesToTest.map(page => {
-      const performanceData: Omit<PagePerformance, 'id'> = {
-        reportPath: page.reportPath,
-        url: page.url,
-        lastUpdated: new Date().toISOString(),
-        mobile: {
-          '4g': createRandomMetrics(Math.random() * 40 + 50), // score between 50-90
-          fast3g: createRandomMetrics(Math.random() * 40 + 40), // score between 40-80
-        },
-        desktop: {
-          '4g': createRandomMetrics(Math.random() * 10 + 85), // score between 85-95
-          fast3g: createRandomMetrics(Math.random() * 10 + 80), // score between 80-90
-        },
-      };
-      
-      return addDoc(collection(db, 'performance-reports'), performanceData);
-    });
+  async ({ page, shouldFail }) => {
+    console.log(`Running Lighthouse test for ${page.url}...`);
 
-    await Promise.all(promises);
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
     
-    console.log('Lighthouse tests finished and data saved to Firestore.');
+    if (shouldFail) {
+      console.error(`Simulated failure for ${page.url}`);
+      throw new Error(`Lighthouse failed for ${page.url}`);
+    }
+
+    const performanceData: Omit<PagePerformance, 'id'> = {
+      reportPath: page.reportPath,
+      url: page.url,
+      lastUpdated: new Date().toISOString(),
+      mobile: {
+        '4g': createRandomMetrics(Math.random() * 40 + 50), // score between 50-90
+        fast3g: createRandomMetrics(Math.random() * 40 + 40), // score between 40-80
+      },
+      desktop: {
+        '4g': createRandomMetrics(Math.random() * 10 + 85), // score between 85-95
+        fast3g: createRandomMetrics(Math.random() * 10 + 80), // score between 80-90
+      },
+    };
+    
+    await addDoc(collection(db, 'performance-reports'), performanceData);
+    
+    const successMessage = `Lighthouse test finished for ${page.url} and data saved to Firestore.`;
+    console.log(successMessage);
+    return successMessage;
   }
 );
 
 
-export async function runLighthouseTests(): Promise<void> {
-    await runLighthouseFlow();
+export async function runLighthouseTestForPage(page: PageToTest, shouldFail?: boolean): Promise<string> {
+    return await runLighthouseFlow({ page, shouldFail: !!shouldFail });
 }
