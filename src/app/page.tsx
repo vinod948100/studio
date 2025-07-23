@@ -1,3 +1,4 @@
+'use client';
 import { getPerformanceData } from '@/lib/data';
 import { PerformanceTable } from '@/components/dashboard/performance-table';
 import { ScheduleDialog } from '@/components/dashboard/schedule-dialog';
@@ -9,9 +10,20 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Flame } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { PagePerformance } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function Home() {
-  const data = await getPerformanceData();
+export default function Home() {
+  const [data, setData] = useState<PagePerformance[] | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const performanceData = await getPerformanceData();
+      setData(performanceData);
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/20">
@@ -37,7 +49,16 @@ export default async function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PerformanceTable data={data} />
+            {data ? (
+              <PerformanceTable data={data} />
+            ) : (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
