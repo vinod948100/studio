@@ -20,8 +20,8 @@ const createRandomMetrics = (baseScore: number): PerformanceMetrics => ({
 export async function runLighthouseTestForPage(page: PageToTest): Promise<string> {
   console.log(`Running Lighthouse test for ${page.url}...`);
 
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  // Simulate a much shorter network delay
+  await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
   
   const performanceData: Omit<PagePerformance, 'id'> = {
     reportPath: page.reportPath,
