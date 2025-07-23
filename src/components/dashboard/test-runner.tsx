@@ -54,7 +54,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
   const runTest = async (test: TestResult, index: number) => {
     updateResult(index, { status: 'running', log: 'Starting test...', attempt: test.attempt + 1 });
     try {
-       const response = await fetch('/api/run-test', {
+      const response = await fetch('/api/run-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,13 +62,32 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
-      const data = await response.json();
-
+      // The response from the API should be JSON.
+      // If the server has a catastrophic error, it might return HTML (e.g., a 500 error page).
+      // We need to handle both cases.
+      const responseText = await response.text();
       if (!response.ok) {
-        throw new Error(data.message || 'An unknown error occurred during the test.');
+        try {
+          // Try to parse as JSON first, as our API route should return JSON errors.
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.message || 'An unknown API error occurred.');
+        } catch (e) {
+          // If parsing fails, it's not a valid JSON response.
+          // This happens when the server returns a generic HTML error page.
+          console.error("Received non-JSON error response from server:", responseText);
+          throw new Error('An internal server error occurred. Check the server logs for details.');
+        }
       }
 
-      updateResult(index, { status: 'success', log: data.message });
+      // If the response was OK, it should contain success JSON data.
+      try {
+        const data = JSON.parse(responseText);
+        updateResult(index, { status: 'success', log: data.message });
+      } catch (e) {
+        console.error("Failed to parse success response from server:", responseText);
+        throw new Error('Received an invalid success response from the server.');
+      }
+
     } catch (error: any) {
       console.error(`Test failed for ${test.page.url}:`, error);
       updateResult(index, { status: 'failed', log: error.message || 'An unknown error occurred.' });
