@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { runLighthouseTestForPage } from '@/ai/flows/run-lighthouse-flow';
 import type { TestResult, PageToTest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,7 +16,6 @@ import {
   Loader,
   Play,
   RefreshCw,
-  Rocket,
   Search,
   XCircle,
   AlertCircle,
@@ -52,17 +50,31 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
       prev.map((r, i) => (i === index ? { ...r, ...newResult } : r))
     );
   };
-
+  
   const runTest = async (test: TestResult, index: number) => {
     updateResult(index, { status: 'running', log: 'Starting test...', attempt: test.attempt + 1 });
     try {
-      const log = await runLighthouseTestForPage(test.page);
-      updateResult(index, { status: 'success', log });
+       const response = await fetch('/api/run-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page: test.page }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'An unknown error occurred during the test.');
+      }
+
+      const data = await response.json();
+      updateResult(index, { status: 'success', log: data.message });
     } catch (error: any) {
       console.error(`Test failed for ${test.page.url}:`, error);
       updateResult(index, { status: 'failed', log: error.message || 'An unknown error occurred.' });
     }
   };
+
 
   const handleFetchPages = async () => {
     setIsFetchingPages(true);
