@@ -17,17 +17,12 @@ const createRandomMetrics = (baseScore: number): PerformanceMetrics => ({
   cls: parseFloat((Math.random() * 0.15).toFixed(3)),
 });
 
-export async function runLighthouseTestForPage(page: PageToTest, shouldFail?: boolean): Promise<string> {
+export async function runLighthouseTestForPage(page: PageToTest): Promise<string> {
   console.log(`Running Lighthouse test for ${page.url}...`);
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
   
-  if (shouldFail) {
-    console.error(`Simulated failure for ${page.url}`);
-    throw new Error(`Lighthouse failed for ${page.url}`);
-  }
-
   const performanceData: Omit<PagePerformance, 'id'> = {
     reportPath: page.reportPath,
     url: page.url,

@@ -53,9 +53,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
   const runTest = async (test: TestResult, index: number) => {
     updateResult(index, { status: 'running', log: 'Starting test...', attempt: test.attempt + 1 });
     try {
-      // For demo, let's randomly decide if a test should fail on the first attempt
-      const shouldFail = test.attempt < 1 && Math.random() < 0.3;
-      const log = await runLighthouseTestForPage(test.page, shouldFail);
+      const log = await runLighthouseTestForPage(test.page);
       updateResult(index, { status: 'success', log });
     } catch (error: any) {
       updateResult(index, { status: 'failed', log: error.message || 'An unknown error occurred.' });
