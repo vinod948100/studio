@@ -62,19 +62,12 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorText = await response.text();
-        // The error might be HTML, so let's try to parse JSON first for our expected error format
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.message || 'An unknown error occurred during the test.');
-        } catch (e) {
-          // If parsing fails, it's likely the HTML error page or other non-JSON text.
-          throw new Error('An internal server error occurred.');
-        }
+        throw new Error(data.message || 'An unknown error occurred during the test.');
       }
 
-      const data = await response.json();
       updateResult(index, { status: 'success', log: data.message });
     } catch (error: any) {
       console.error(`Test failed for ${test.page.url}:`, error);
