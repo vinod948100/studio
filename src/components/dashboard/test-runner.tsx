@@ -63,12 +63,20 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
       
-      const responseBody = await response.json();
-
       if (!response.ok) {
-        throw new Error(responseBody.message || `API error: ${response.statusText}`);
+        let errorMessage = `An internal server error occurred. Status: ${response.status}`;
+        try {
+          // Try to get a more specific error message from the JSON response, if it exists
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // The response was not JSON, which is expected for 500 errors returning HTML pages
+          console.error(`Received non-JSON error response from server for ${test.page.url}. Status: ${response.status}`);
+        }
+        throw new Error(errorMessage);
       }
       
+      const responseBody = await response.json();
       updateResult(index, { status: 'success', log: responseBody.message });
 
     } catch (error: any) {
