@@ -63,19 +63,13 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
-      if (!response.ok) {
-        // Try to parse error response as JSON, but fallback if it's not
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'An unknown API error occurred.');
-        } catch (e) {
-          console.error(`Received non-JSON error response from server for ${test.page.url}. Status: ${response.status}`);
-          throw new Error('An internal server error occurred. Check server logs for details.');
-        }
-      }
+      const responseBody = await response.json();
 
-      const data = await response.json();
-      updateResult(index, { status: 'success', log: data.message });
+      if (!response.ok) {
+        throw new Error(responseBody.message || 'An unknown API error occurred.');
+      }
+      
+      updateResult(index, { status: 'success', log: responseBody.message });
 
     } catch (error: any) {
       console.error(`Test failed for ${test.page.url}:`, error);

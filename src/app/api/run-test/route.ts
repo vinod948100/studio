@@ -31,15 +31,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('API Error:', error);
     
-    let errorMessage = 'An unknown internal server error occurred.';
-    let statusCode = 500;
-
-    if (error.code === 'permission-denied' || (error.message && error.message.includes('permission-denied'))) {
-       errorMessage = 'Firestore permission denied. Please check your security rules.';
-       statusCode = 403; // Forbidden
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
+    const errorMessage = error.message || 'An unknown internal server error occurred.';
+    const statusCode = error.code === 'permission-denied' ? 403 : 500;
     
     return NextResponse.json({ message: errorMessage }, { status: statusCode });
   }
