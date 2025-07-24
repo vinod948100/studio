@@ -31,9 +31,13 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error(`API Error:`, error);
     
-    const errorMessage = error.message || 'An unknown internal server error occurred.';
-    const statusCode = error.code === 'permission-denied' ? 403 : 500;
+    let errorMessage = 'An unknown internal server error occurred.';
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.details) {
+      errorMessage = error.details;
+    }
     
-    return NextResponse.json({ message: errorMessage }, { status: statusCode });
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

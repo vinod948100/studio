@@ -62,7 +62,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         },
         body: JSON.stringify({ page: test.page }),
       });
-
+      
       const responseBody = await response.json();
 
       if (!response.ok) {
