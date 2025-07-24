@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: successMessage });
 
   } catch (error: any) {
-    console.error(`API Error for ${request.url}:`, error);
+    console.error(`API Error:`, error);
     
     const errorMessage = error.message || 'An unknown internal server error occurred.';
     const statusCode = error.code === 'permission-denied' ? 403 : 500;

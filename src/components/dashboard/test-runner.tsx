@@ -63,17 +63,12 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
+      const responseBody = await response.json();
+
       if (!response.ok) {
-         try {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `API error: ${response.statusText}`);
-        } catch (e) {
-          // If parsing fails, it's likely an HTML error page.
-          throw new Error(`An internal server error occurred. Status: ${response.status}`);
-        }
+        throw new Error(responseBody.message || `API error: ${response.statusText}`);
       }
       
-      const responseBody = await response.json();
       updateResult(index, { status: 'success', log: responseBody.message });
 
     } catch (error: any) {
