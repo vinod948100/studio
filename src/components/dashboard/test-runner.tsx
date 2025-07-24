@@ -63,12 +63,17 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         body: JSON.stringify({ page: test.page }),
       });
 
-      const responseBody = await response.json();
-
       if (!response.ok) {
-        throw new Error(responseBody.message || 'An unknown API error occurred.');
+         try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `API error: ${response.statusText}`);
+        } catch (e) {
+          // Response is not JSON, likely an HTML error page
+          throw new Error(`An internal server error occurred.`);
+        }
       }
       
+      const responseBody = await response.json();
       updateResult(index, { status: 'success', log: responseBody.message });
 
     } catch (error: any) {
