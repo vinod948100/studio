@@ -68,8 +68,8 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
           const errorData = await response.json();
           throw new Error(errorData.message || `API error: ${response.statusText}`);
         } catch (e) {
-          // Response is not JSON, likely an HTML error page
-          throw new Error(`An internal server error occurred.`);
+          // If parsing fails, it's likely an HTML error page.
+          throw new Error(`An internal server error occurred. Status: ${response.status}`);
         }
       }
       
