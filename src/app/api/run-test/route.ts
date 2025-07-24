@@ -1,17 +1,9 @@
-
 import { NextResponse } from 'next/server';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { PerformanceMetrics, PageToTest } from '@/lib/types';
+import type { PageToTest } from '@/lib/types';
+import { runLighthouseTest } from '@/ai/flows/run-lighthouse-flow';
 
-
-const createRandomMetrics = (baseScore: number): PerformanceMetrics => ({
-  performanceScore: Math.floor(baseScore + Math.random() * 10),
-  fcp: parseFloat((0.8 + Math.random() * 1.5).toFixed(2)),
-  lcp: parseFloat((1.5 + Math.random() * 2.0).toFixed(2)),
-  tbt: Math.floor(50 + Math.random() * 200),
-  cls: parseFloat((Math.random() * 0.15).toFixed(3)),
-});
 
 export async function POST(request: Request) {
   try {
@@ -21,21 +13,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid page data provided.' }, { status: 400 });
     }
 
-    // Simulate a much shorter network delay
-    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+    // Run the actual Lighthouse test using the Genkit flow
+    const lighthouseData = await runLighthouseTest({ url: page.url });
     
     const performanceData = {
       reportPath: page.reportPath,
       url: page.url,
       lastUpdated: new Date().toISOString(),
-      mobile: {
-        '4g': createRandomMetrics(Math.random() * 40 + 50), // score between 50-90
-        fast3g: createRandomMetrics(Math.random() * 40 + 40), // score between 40-80
-      },
-      desktop: {
-        '4g': createRandomMetrics(Math.random() * 10 + 85), // score between 85-95
-        fast3g: createRandomMetrics(Math.random() * 10 + 80), // score between 80-90
-      },
+      ...lighthouseData,
     };
     
     await addDoc(collection(db, 'performance-reports'), performanceData);
@@ -45,14 +30,17 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('API Error:', error);
-    // Check if it's a Firebase permission error
+    
+    let errorMessage = 'An unknown internal server error occurred.';
+    let statusCode = 500;
+
     if (error.code === 'permission-denied' || (error.message && error.message.includes('permission-denied'))) {
-       return NextResponse.json(
-        { message: 'Firestore permission denied. Please check your security rules.' },
-        { status: 500 }
-      );
+       errorMessage = 'Firestore permission denied. Please check your security rules.';
+       statusCode = 403; // Forbidden
+    } else if (error.message) {
+      errorMessage = error.message;
     }
-    const errorMessage = error.message || 'An unknown internal server error occurred.';
-    return NextResponse.json({ message: `An internal server error occurred: ${errorMessage}` }, { status: 500 });
+    
+    return NextResponse.json({ message: errorMessage }, { status: statusCode });
   }
 }
