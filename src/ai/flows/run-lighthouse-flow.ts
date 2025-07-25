@@ -4,39 +4,15 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
 import axios from 'axios';
+import {
+  RunLighthouseTestInputSchema,
+  RunLighthouseTestOutputSchema,
+  PerformanceMetrics,
+  type RunLighthouseTestInput,
+  type RunLighthouseTestOutput,
+} from '@/lib/lighthouse-types';
 
-// Define input schema for the Lighthouse flow
-export const RunLighthouseTestInputSchema = z.object({
-  url: z.string().url(),
-});
-export type RunLighthouseTestInput = z.infer<typeof RunLighthouseTestInputSchema>;
-
-// Define the structure of the performance metrics we expect back
-export const PerformanceMetricsSchema = z.object({
-  performanceScore: z.number().min(0).max(100),
-  fcp: z.number(),
-  lcp: z.number(),
-  tbt: z.number(),
-  cls: z.number(),
-});
-export type PerformanceMetrics = z.infer<typeof PerformanceMetricsSchema>;
-
-// Define the output schema for the Lighthouse flow
-export const RunLighthouseTestOutputSchema = z.object({
-  mobile: z.object({
-    '4g': PerformanceMetricsSchema,
-    fast3g: PerformanceMetricsSchema,
-  }),
-  desktop: z.object({
-    '4g': PerformanceMetricsSchema,
-    fast3g: PerformanceMetricsSchema,
-  }),
-});
-export type RunLighthouseTestOutput = z.infer<
-  typeof RunLighthouseTestOutputSchema
->;
 
 /**
  * Runs a Lighthouse test for a given page URL using the PageSpeed Insights API.
@@ -53,9 +29,6 @@ export async function runLighthouseTest(
 
 // Helper function to call PageSpeed Insights and extract metrics
 async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop'): Promise<PerformanceMetrics> {
-  console.log("==========================")
-  console.log(url);
-  console.log("==========================")
   const apiKey = process.env.PAGESPEED_API_KEY;
   if (!apiKey) {
     throw new Error('PAGESPEED_API_KEY environment variable is not set.');
@@ -67,9 +40,6 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
   
   try {
     const response = await axios.get(apiUrl);
-    console.log("====================")
-    console.log(response.data);
-    console.log("====================")
     const lighthouseResult = response.data.lighthouseResult;
     const audits = lighthouseResult.audits;
 
@@ -77,7 +47,6 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
     
     // Convert scores to a 0-100 scale
     const performanceScore = (lighthouseResult.categories.performance.score || 0) * 100;
-    console.log(performanceScore);
     return {
       performanceScore: Math.round(performanceScore),
       fcp: getAuditNumericValue('first-contentful-paint') / 1000, // ms to s
@@ -94,7 +63,7 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
 /**
  * Genkit flow to orchestrate Lighthouse tests for a URL on both mobile and desktop.
  */
-export const runLighthouseTestFlow = ai.defineFlow(
+const runLighthouseTestFlow = ai.defineFlow(
   {
     name: 'runLighthouseTestFlow',
     inputSchema: RunLighthouseTestInputSchema,

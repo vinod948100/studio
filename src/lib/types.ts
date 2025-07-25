@@ -1,10 +1,6 @@
-export type PerformanceMetrics = {
-  performanceScore: number;
-  fcp: number;
-  lcp: number;
-  tbt: number;
-  cls: number;
-};
+import type { RunLighthouseTestOutput } from './lighthouse-types';
+
+export type PerformanceMetrics = RunLighthouseTestOutput['mobile']['4g'];
 
 export type NetworkPerformance = {
   '4g': PerformanceMetrics;
