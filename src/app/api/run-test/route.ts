@@ -15,6 +15,13 @@ export async function POST(request: Request) {
 
     // Run the actual Lighthouse test using the Genkit flow
     const lighthouseData = await runLighthouseTest({ url: page.url });
+
+    // Handle the case where the Lighthouse flow failed for the URL
+    if (!lighthouseData) {
+      const errorMessage = `Lighthouse tests failed for ${page.url}. The page may be inaccessible or timed out.`;
+      console.error(errorMessage);
+      return NextResponse.json({ message: errorMessage }, { status: 500 });
+    }
     
     const performanceData = {
       reportPath: page.reportPath,
