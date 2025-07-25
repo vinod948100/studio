@@ -9,14 +9,14 @@ import {
 } from '@/components/ui/chart';
 import type { PagePerformance } from '@/lib/types';
 import {
-  Bar,
-  BarChart,
+  Line,
+  LineChart,
   CartesianGrid,
   XAxis,
   YAxis,
-  ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { format } from 'date-fns';
 
 const chartConfig = {
   desktop: {
@@ -34,35 +34,70 @@ interface PerformanceChartProps {
 }
 
 export function PerformanceChart({ data }: PerformanceChartProps) {
-  // Aggregate data for charting: average scores per report path
-  const chartData = data.map((item) => ({
-    name: item.reportPath,
-    desktop: item.desktop['4g'].performanceScore,
-    mobile: item.mobile['4g'].performanceScore,
-  }));
+  // Process data for charting
+  const chartData = data
+    .map((item) => ({
+      date: new Date(item.lastUpdated),
+      desktop: item.desktop['4g'].performanceScore,
+      mobile: item.mobile['4g'].performanceScore,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  // Create a set of unique dates for the X-axis
+  const uniqueDates = [...new Set(chartData.map(item => format(item.date, 'MMM d')))];
+
+  // Aggregate data by date, averaging scores if multiple tests ran on the same day
+  const aggregatedData = uniqueDates.map(dateStr => {
+    const itemsOnDate = chartData.filter(item => format(item.date, 'MMM d') === dateStr);
+    const avgMobile = itemsOnDate.reduce((acc, curr) => acc + curr.mobile, 0) / itemsOnDate.length;
+    const avgDesktop = itemsOnDate.reduce((acc, curr) => acc + curr.desktop, 0) / itemsOnDate.length;
+    return {
+      name: dateStr,
+      mobile: Math.round(avgMobile),
+      desktop: Math.round(avgDesktop)
+    }
+  });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Performance Scores by Page</CardTitle>
+        <CardTitle>Performance Trend</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData}>
+          <LineChart
+            accessibilityLayer
+            data={aggregatedData}
+            margin={{
+              left: 12,
+              right: 12,
+            }}
+          >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="name"
               tickLine={false}
-              tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 15) + (value.length > 15 ? '...' : '')}
+              tickMargin={8}
             />
             <YAxis domain={[0, 100]} />
             <ChartTooltip content={<ChartTooltipContent />} />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
-          </BarChart>
+            <Line
+              dataKey="mobile"
+              type="monotone"
+              stroke="var(--color-mobile)"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              dataKey="desktop"
+              type="monotone"
+              stroke="var(--color-desktop)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>
