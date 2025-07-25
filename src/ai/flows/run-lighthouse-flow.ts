@@ -53,6 +53,9 @@ export async function runLighthouseTest(
 
 // Helper function to call PageSpeed Insights and extract metrics
 async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop'): Promise<PerformanceMetrics> {
+  console.log("==========================")
+  console.log(url);
+  console.log("==========================")
   const apiKey = process.env.PAGESPEED_API_KEY;
   if (!apiKey) {
     throw new Error('PAGESPEED_API_KEY environment variable is not set.');
@@ -64,6 +67,9 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
   
   try {
     const response = await axios.get(apiUrl);
+    console.log("====================")
+    console.log(response.data);
+    console.log("====================")
     const lighthouseResult = response.data.lighthouseResult;
     const audits = lighthouseResult.audits;
 
@@ -71,7 +77,7 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
     
     // Convert scores to a 0-100 scale
     const performanceScore = (lighthouseResult.categories.performance.score || 0) * 100;
-
+    console.log(performanceScore);
     return {
       performanceScore: Math.round(performanceScore),
       fcp: getAuditNumericValue('first-contentful-paint') / 1000, // ms to s
