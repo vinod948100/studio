@@ -66,14 +66,14 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
       if (!response.ok) {
         let errorMessage = `An internal server error occurred. Status: ${response.status}`;
         try {
-          // Try to get a more specific error message from the JSON response, if it exists
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          // The response was not JSON, which is expected for 500 errors returning HTML pages
           console.error(`Received non-JSON error response from server for ${test.page.url}. Status: ${response.status}`);
         }
-        throw new Error(errorMessage);
+        // Directly update the result with the failure and return, no more throwing.
+        updateResult(index, { status: 'failed', log: errorMessage });
+        return; 
       }
       
       const responseBody = await response.json();
