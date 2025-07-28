@@ -159,7 +159,7 @@ const SingleChart = ({ title, dataKeySuffix, chartData, uniquePages, chartConfig
                 stroke={chartConfig[`${page.reportPath}-${dataKeySuffix}`]?.color}
                 strokeWidth={2}
                 dot={true}
-                connectNulls={false} // This creates the gaps for days without data
+                connectNulls={true} // This creates the gaps for days without data
               />
             ))}
           </LineChart>
