@@ -22,18 +22,36 @@ import { Input } from '../ui/input';
 import { Calendar, Clock, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-
-// Note: The run now functionality has been moved to the new TestRunner component.
-// This dialog is now for demonstration of a scheduled run config.
+import axios from 'axios';
 
 export function ScheduleDialog() {
   const { toast } = useToast();
-  
-  const handleSave = () => {
-    toast({
-      title: 'Schedule Saved',
-      description: 'Your performance tests will run as scheduled. (This is a demo and not actually scheduled).',
-    });
+  const [isSaving, setIsSaving] = useState(false);
+  const [frequency, setFrequency] = useState('daily');
+  const [time, setTime] = useState('03:00');
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await axios.post('/api/schedule-run', {
+        frequency,
+        time,
+        timezone: 'IST',
+      });
+      toast({
+        title: 'Schedule Saved',
+        description: `Your performance tests are now scheduled to run ${frequency} at ${time} IST.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Save Schedule',
+        description:
+          'Could not save the schedule. Please try again later.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -56,7 +74,11 @@ export function ScheduleDialog() {
             <Label htmlFor="frequency" className="text-right">
               Frequency
             </Label>
-            <Select defaultValue="daily">
+            <Select
+              defaultValue="daily"
+              onValueChange={setFrequency}
+              value={frequency}
+            >
               <SelectTrigger id="frequency" className="col-span-3">
                 <SelectValue placeholder="Select frequency" />
               </SelectTrigger>
@@ -69,14 +91,24 @@ export function ScheduleDialog() {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="time" className="text-right">
-              Time (UTC)
+              Time (IST)
             </Label>
-            <Input id="time" type="time" defaultValue="03:00" className="col-span-3" />
+            <Input
+              id="time"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="col-span-3"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSave}>
-            <Calendar className="mr-2 h-4 w-4" />
+          <Button type="submit" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Calendar className="mr-2 h-4 w-4" />
+            )}
             Save Schedule
           </Button>
         </DialogFooter>
