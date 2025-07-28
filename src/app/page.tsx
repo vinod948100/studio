@@ -204,7 +204,7 @@ export default function Home() {
                   reportView === 'table' ? (
                     <PerformanceTable data={filteredData} />
                   ) : (
-                    <PerformanceChart data={filteredData} />
+                    <PerformanceChart data={filteredData} dateRange={dateRange} />
                   )
                 ) : (
                   <div className="space-y-4">

@@ -14,9 +14,11 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
+  Label,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { format } from 'date-fns';
+import { format, eachDayOfInterval, startOfDay } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 const chartConfig = {
   desktop: {
@@ -31,30 +33,62 @@ const chartConfig = {
 
 interface PerformanceChartProps {
   data: PagePerformance[];
+  dateRange?: DateRange;
 }
 
-export function PerformanceChart({ data }: PerformanceChartProps) {
-  // Process data for charting
-  const chartData = data
-    .map((item) => ({
-      date: new Date(item.lastUpdated),
-      desktop: item.desktop['4g'].performanceScore,
-      mobile: item.mobile['4g'].performanceScore,
-    }))
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
+export function PerformanceChart({ data, dateRange }: PerformanceChartProps) {
+  // 1. Create a map of the data for quick lookups by date
+  const dataMap = new Map<
+    string,
+    { mobileScores: number[]; desktopScores: number[] }
+  >();
 
-  // Create a set of unique dates for the X-axis
-  const uniqueDates = [...new Set(chartData.map(item => format(item.date, 'MMM d')))];
+  data.forEach((item) => {
+    const day = format(new Date(item.lastUpdated), 'yyyy-MM-dd');
+    if (!dataMap.has(day)) {
+      dataMap.set(day, { mobileScores: [], desktopScores: [] });
+    }
+    dataMap
+      .get(day)!
+      .mobileScores.push(item.mobile['4g'].performanceScore);
+    dataMap
+      .get(day)!
+      .desktopScores.push(item.desktop['4g'].performanceScore);
+  });
+  
+  // 2. Generate all days in the selected date range
+  const allDaysInRange =
+    dateRange && dateRange.from && dateRange.to
+      ? eachDayOfInterval({
+          start: startOfDay(dateRange.from),
+          end: startOfDay(dateRange.to),
+        })
+      : [];
 
-  // Aggregate data by date, averaging scores if multiple tests ran on the same day
-  const aggregatedData = uniqueDates.map(dateStr => {
-    const itemsOnDate = chartData.filter(item => format(item.date, 'MMM d') === dateStr);
-    const avgMobile = itemsOnDate.reduce((acc, curr) => acc + curr.mobile, 0) / itemsOnDate.length;
-    const avgDesktop = itemsOnDate.reduce((acc, curr) => acc + curr.desktop, 0) / itemsOnDate.length;
-    return {
-      name: dateStr,
-      mobile: Math.round(avgMobile),
-      desktop: Math.round(avgDesktop)
+  // 3. Create the final chart data, filling in gaps
+  const aggregatedData = allDaysInRange.map((date) => {
+    const dayKey = format(date, 'yyyy-MM-dd');
+    const dayData = dataMap.get(dayKey);
+
+    if (dayData) {
+      const avgMobile =
+        dayData.mobileScores.reduce((acc, curr) => acc + curr, 0) /
+        dayData.mobileScores.length;
+      const avgDesktop =
+        dayData.desktopScores.reduce((acc, curr) => acc + curr, 0) /
+        dayData.desktopScores.length;
+      return {
+        name: format(date, 'MMM d'),
+        mobile: Math.round(avgMobile),
+        desktop: Math.round(avgDesktop),
+      };
+    } else {
+      // For days with no data, return null to create gaps in the line chart
+      return {
+        name: format(date, 'MMM d'),
+        mobile: null,
+        desktop: null,
+      };
     }
   });
 
@@ -69,33 +103,53 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             accessibilityLayer
             data={aggregatedData}
             margin={{
-              left: 12,
-              right: 12,
+              top: 5,
+              right: 20,
+              left: 10,
+              bottom: 5,
             }}
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="name"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              // tickFormatter={(value) => format(parseISO(value), 'MMM d')}
             />
-            <YAxis domain={[0, 100]} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <YAxis
+              domain={[0, 100]}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            >
+               <Label value="Score" angle={-90} position="insideLeft" style={{ textAnchor: 'middle' }} />
+            </YAxis>
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  formatter={(value, name) =>
+                    value === null ? 'N/A' : `${value}`
+                  }
+                />
+              }
+            />
             <ChartLegend content={<ChartLegendContent />} />
             <Line
               dataKey="mobile"
               type="monotone"
               stroke="var(--color-mobile)"
               strokeWidth={2}
-              dot={false}
+              dot={true}
+              connectNulls={false} // This is crucial to create gaps
             />
             <Line
               dataKey="desktop"
               type="monotone"
               stroke="var(--color-desktop)"
               strokeWidth={2}
-              dot={false}
+              dot={true}
+              connectNulls={false} // This is crucial to create gaps
             />
           </LineChart>
         </ChartContainer>
