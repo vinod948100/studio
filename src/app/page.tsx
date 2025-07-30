@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Flame, LineChart, Table } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { PagePerformance } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,6 +19,13 @@ import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { PerformanceChart } from '@/components/dashboard/performance-chart';
 import { ScheduleDialog } from '@/components/dashboard/schedule-dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from "@/components/ui/select"
 
 export default function Home() {
   const [allData, setAllData] = useState<PagePerformance[] | null>(null);
@@ -31,6 +38,7 @@ export default function Home() {
     from: subDays(new Date(), 29),
     to: new Date(),
   });
+  const [selectedPage, setSelectedPage] = useState<string>('all');
 
   const fetchData = async () => {
     setAllData(null);
@@ -54,17 +62,23 @@ export default function Home() {
           toDate.setHours(23, 59, 59, 999);
           if (itemDate > toDate) return false;
         }
+        // Filter by selected page if a page is selected
+        if (selectedPage !== 'all' && item.reportPath !== selectedPage) return false;
+
         return true;
       });
       setFilteredData(filtered);
     }
-  }, [allData, dateRange]);
+  }, [allData, dateRange, selectedPage]); // Add selectedPage to dependencies
 
   const handleTestRunCompletion = () => {
     fetchData();
     setActiveTab('reports');
   };
 
+  const uniquePagesList = useMemo(() => Array.from(new Set(allData?.map(item => item.reportPath) || [])), [allData]);
+
+  // Calculate averages based on filteredData
   const mobileAverage =
     filteredData && filteredData.length > 0
       ? Math.round(
@@ -137,10 +151,26 @@ export default function Home() {
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
-                  <DateRangePicker
-                    date={dateRange}
-                    onDateChange={setDateRange}
-                  />
+                   {reportView === 'table' && (
+                     <div className="flex items-center gap-4">
+                       <Select onValueChange={setSelectedPage} value={selectedPage}>
+                              <SelectTrigger className="w-[180px]">
+                                  <SelectValue placeholder="Select " />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="all">All Pages</SelectItem>
+                                  {uniquePagesList.map(page => (
+                                      <SelectItem key={page} value={page}>{page}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                          <DateRangePicker
+                              date={dateRange}
+                              onDateChange={setDateRange}
+                          />
+                     </div>
+                   )}
+
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -153,7 +183,7 @@ export default function Home() {
                     <CardContent>
                       <div className="text-2xl font-bold">{mobileAverage}</div>
                       <p className="text-xs text-muted-foreground">
-                        Average score for selected date range
+                        Average score for {selectedPage ? selectedPage : 'all pages'} in selected date range
                       </p>
                     </CardContent>
                   </Card>
@@ -166,7 +196,7 @@ export default function Home() {
                     <CardContent>
                       <div className="text-2xl font-bold">{desktopAverage}</div>
                       <p className="text-xs text-muted-foreground">
-                        Average score for selected date range
+                         Average score for {selectedPage ? selectedPage : 'all pages'} in selected date range
                       </p>
                     </CardContent>
                   </Card>

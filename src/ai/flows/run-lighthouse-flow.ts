@@ -39,7 +39,7 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
   )}&strategy=${strategy}&key=${apiKey}&category=PERFORMANCE`;
   
   try {
-    const response = await axios.get(apiUrl, { timeout: 60000 }); // 60 second timeout
+    const response = await axios.get(apiUrl, { timeout: 120000 }); // 90 second timeout
     const lighthouseResult = response.data.lighthouseResult;
     
     // If lighthouseResult is missing, the test likely failed.
