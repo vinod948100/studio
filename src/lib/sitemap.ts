@@ -39,7 +39,7 @@ export async function extractSitemapUrls(sitemapUrl: string): Promise<PageToTest
         console.error(`Invalid URL found in sitemap: ${urlStr}`);
         return null;
       }
-    }).filter((p): p is PageToTest => p !== null);
+    }).filter((p: PageToTest | null): p is PageToTest => p !== null);
 
     return urlArray;
   } catch (error: any) {

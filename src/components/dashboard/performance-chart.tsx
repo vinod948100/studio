@@ -1,11 +1,10 @@
 
 'use client';
+import { useMemo } from 'react';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
 import type { PagePerformance } from '@/lib/types';
 import {
@@ -19,7 +18,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { format, eachDayOfInterval, startOfDay } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { useMemo } from 'react';
 
 interface PerformanceChartProps {
   data: PagePerformance[];
@@ -88,85 +86,20 @@ const processChartData = (data: PagePerformance[], dateRange?: DateRange) => {
     // 4. Create dynamic chart config for colors and labels
     const chartConfig: any = {};
     uniquePages.forEach((page) => {
-      const baseColor = stringToColor(page.reportPath);
+      const color = stringToColor(page.reportPath);
       chartConfig[`${page.reportPath}-mobile`] = {
-        label: `${page.reportPath}`,
-        color: baseColor,
+        label: page.reportPath,
+        color: color,
       };
       chartConfig[`${page.reportPath}-desktop`] = {
-        label: `${page.reportPath}`,
-        color: baseColor,
+        label: page.reportPath,
+        color: color,
       };
     });
 
     return { chartData, uniquePages, chartConfig };
 }
 
-
-const SingleChart = ({ title, dataKeySuffix, chartData, uniquePages, chartConfig }: { title: string, dataKeySuffix: 'mobile' | 'desktop', chartData: any[], uniquePages: PagePerformance[], chartConfig: any }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>Performance score trend for each page.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[400px] w-full">
-          <LineChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              top: 5,
-              right: 20,
-              left: 10,
-              bottom: 60,
-            }}
-          >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <YAxis
-              domain={[0, 100]}
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            >
-              <Label
-                value="Score"
-                angle={-90}
-                position="insideLeft"
-                style={{ textAnchor: 'middle' }}
-              />
-            </YAxis>
-            <ChartTooltip
-              cursor={{
-                strokeDasharray: '3 3',
-              }}
-              content={<ChartTooltipContent indicator="line" />}
-            />
-            <ChartLegend
-              content={<ChartLegendContent verticalAlign="bottom" />}
-            />
-            {uniquePages.map((page) => (
-              <Line
-                key={`${page.reportPath}-${dataKeySuffix}`}
-                dataKey={`${page.reportPath}-${dataKeySuffix}`}
-                name={chartConfig[`${page.reportPath}-${dataKeySuffix}`]?.label}
-                type="monotone"
-                stroke={chartConfig[`${page.reportPath}-${dataKeySuffix}`]?.color}
-                strokeWidth={2}
-                dot={true}
-                connectNulls={true} // This creates the gaps for days without data
-              />
-            ))}
-          </LineChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-)
 
 export function PerformanceChart({ data, dateRange }: PerformanceChartProps) {
   const { chartData, uniquePages, chartConfig } = useMemo(() => processChartData(data, dateRange), [data, dateRange]);
@@ -185,21 +118,141 @@ export function PerformanceChart({ data, dateRange }: PerformanceChartProps) {
   }
 
   return (
-    <div className='grid gap-6 md:grid-cols-1 lg:grid-cols-2'>
-        <SingleChart 
-            title="Mobile Performance Trend"
-            dataKeySuffix='mobile'
-            chartData={chartData}
-            uniquePages={uniquePages}
-            chartConfig={chartConfig}
-        />
-        <SingleChart 
-            title="Desktop Performance Trend"
-            dataKeySuffix='desktop'
-            chartData={chartData}
-            uniquePages={uniquePages}
-            chartConfig={chartConfig}
-        />
+    <div className='flex flex-col gap-6'>
+        <div className='grid gap-6 md:grid-cols-1 lg:grid-cols-2'>
+            <Card>
+              <CardHeader>
+                <CardTitle>Mobile Performance Trend</CardTitle>
+                <CardDescription>Average performance score for each page on mobile.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="min-h-[400px] w-full">
+                  <LineChart
+                    accessibilityLayer
+                    data={chartData}
+                    margin={{
+                      top: 5,
+                      right: 20,
+                      left: 10,
+                      bottom: 20,
+                    }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    >
+                      <Label
+                        value="Score"
+                        angle={-90}
+                        position="insideLeft"
+                        style={{ textAnchor: 'middle' }}
+                      />
+                    </YAxis>
+                    <ChartTooltip
+                      cursor={{
+                        strokeDasharray: '3 3',
+                      }}
+                      content={<ChartTooltipContent indicator="line" />}
+                    />
+                    {uniquePages.map((page) => (
+                        <Line
+                            key={`${page.reportPath}-mobile`}
+                            dataKey={`${page.reportPath}-mobile`}
+                            name={chartConfig[`${page.reportPath}-mobile`]?.label}
+                            type="monotone"
+                            stroke={chartConfig[`${page.reportPath}-mobile`]?.color}
+                            strokeWidth={2}
+                            dot={true}
+                            connectNulls={true} 
+                        />
+                    ))}
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Desktop Performance Trend</CardTitle>
+                <CardDescription>Average performance score for each page on desktop.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="min-h-[400px] w-full">
+                  <LineChart
+                    accessibilityLayer
+                    data={chartData}
+                    margin={{
+                      top: 5,
+                      right: 20,
+                      left: 10,
+                      bottom: 20,
+                    }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    >
+                      <Label
+                        value="Score"
+                        angle={-90}
+                        position="insideLeft"
+                        style={{ textAnchor: 'middle' }}
+                      />
+                    </YAxis>
+                    <ChartTooltip
+                      cursor={{
+                        strokeDasharray: '3 3',
+                      }}
+                      content={<ChartTooltipContent indicator="line" />}
+                    />
+                    {uniquePages.map((page) => (
+                        <Line
+                            key={`${page.reportPath}-desktop`}
+                            dataKey={`${page.reportPath}-desktop`}
+                            name={chartConfig[`${page.reportPath}-desktop`]?.label}
+                            type="monotone"
+                            stroke={chartConfig[`${page.reportPath}-desktop`]?.color}
+                            strokeWidth={2}
+                            dot={true}
+                            connectNulls={true}
+                        />
+                    ))}
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Legend</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
+                {uniquePages.map((page) => (
+                    <div key={page.reportPath} className="flex items-center gap-2">
+                        <div className="h-2 w-4 rounded-full" style={{ backgroundColor: chartConfig[`${page.reportPath}-mobile`]?.color }} />
+                        <span className="text-sm text-muted-foreground">{page.reportPath}</span>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
     </div>
   );
 }

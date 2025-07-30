@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 export async function POST(request: Request) {
   try {
@@ -8,15 +11,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Missing required schedule data.' }, { status: 400 });
     }
 
-    // In a real application, you would save this to a database
-    // and have a cron job or scheduled task trigger the tests.
-    // For this example, we'll just log it to the server console.
-    console.log(`Received schedule: Run tests ${frequency} at ${time} ${timezone}.`);
-
-
-    // You could potentially integrate with a service like Google Cloud Scheduler here.
+    // Save the schedule to a "schedules" collection in Firestore.
+    // We'll use a fixed document ID to always have only one schedule.
+    const scheduleRef = doc(db, 'schedules', 'main-schedule');
+    await setDoc(scheduleRef, {
+      frequency,
+      time,
+      timezone,
+      lastUpdated: new Date().toISOString(),
+    });
     
-    return NextResponse.json({ message: `Schedule saved successfully. Tests will run ${frequency} at ${time} ${timezone}.` });
+    const successMessage = `Schedule saved successfully. Tests will run ${frequency} at ${time} ${timezone}.`;
+    return NextResponse.json({ message: successMessage });
 
   } catch (error: any) {
     console.error(`API Error:`, error);

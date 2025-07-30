@@ -91,7 +91,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <Flame className="h-6 w-6 text-primary" />
           <h1 className="font-headline text-xl font-bold tracking-tighter">
-            Web Vitals Watcher
+            Performance Monitoring
           </h1>
         </div>
         <div className="ml-auto">
@@ -149,20 +149,6 @@ export default function Home() {
                       <CardTitle className="text-sm font-medium">
                         Avg. Mobile Score
                       </CardTitle>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        className="h-4 w-4 text-muted-foreground"
-                      >
-                        <path d="M12 18v-5" />
-                        <path d="M12 8l-4 4" />
-                        <path d="m16 8-4 4" />
-                      </svg>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{mobileAverage}</div>
@@ -176,20 +162,6 @@ export default function Home() {
                       <CardTitle className="text-sm font-medium">
                         Avg. Desktop Score
                       </CardTitle>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        className="h-4 w-4 text-muted-foreground"
-                      >
-                        <path d="M12 18v-5" />
-                        <path d="M12 8l-4 4" />
-                        <path d="m16 8-4 4" />
-                      </svg>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{desktopAverage}</div>
