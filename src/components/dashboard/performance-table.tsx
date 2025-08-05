@@ -40,34 +40,46 @@ function VitalsRow({ performance }: { performance: NetworkPerformance }) {
   return (
     <>
       <TableCell className="text-center">
-        <ScoreBadge score={performance['4g'].performanceScore} />
+        {performance && performance['4g'] ? (
+ <ScoreBadge
+ score={parseFloat(performance['4g'].performanceScore.toFixed(2))}
+ />
+ ) : (
+ '-'
+ )}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance['4g'].fcp}s
+ {performance && performance['4g'] ? `${performance['4g'].fcp}s` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance['4g'].lcp}s
+ {performance && performance['4g'] ? `${performance['4g'].lcp}s` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance['4g'].tbt}ms
+ {performance && performance['4g'] ? `${performance['4g'].tbt}ms` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance['4g'].cls}
+ {performance && performance['4g'] ? performance['4g'].cls : '-'}
       </TableCell>
       <TableCell className="text-center">
-        <ScoreBadge score={performance.fast3g.performanceScore} />
+        {performance && performance.fast3g ? (
+ <ScoreBadge
+ score={parseFloat(performance.fast3g.performanceScore.toFixed(2))}
+ />
+ ) : (
+ '-'
+ )}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance.fast3g.fcp}s
+ {performance && performance.fast3g ? `${performance.fast3g.fcp}s` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance.fast3g.lcp}s
+ {performance && performance.fast3g ? `${performance.fast3g.lcp}s` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance.fast3g.tbt}ms
+ {performance && performance.fast3g ? `${performance.fast3g.tbt}ms` : '-'}
       </TableCell>
       <TableCell className="text-center tabular-nums">
-        {performance.fast3g.cls}
+ {performance && performance.fast3g ? performance.fast3g.cls : '-'}
       </TableCell>
     </>
   );

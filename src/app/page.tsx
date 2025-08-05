@@ -83,8 +83,7 @@ export default function Home() {
     filteredData && filteredData.length > 0
       ? Math.round(
           filteredData.reduce(
-            (acc, curr) => acc + curr.mobile['4g'].performanceScore,
-            0
+ (acc, curr) => acc + (curr.mobile && curr.mobile['4g'] ? curr.mobile['4g'].performanceScore : 0), 0
           ) / filteredData.length
         )
       : 0;
@@ -93,7 +92,7 @@ export default function Home() {
     filteredData && filteredData.length > 0
       ? Math.round(
           filteredData.reduce(
-            (acc, curr) => acc + curr.desktop['4g'].performanceScore,
+            (acc, curr) => acc + (curr.desktop && curr.desktop['4g'] ? curr.desktop['4g'].performanceScore : 0),
             0
           ) / filteredData.length
         )
