@@ -27,8 +27,10 @@ import {
   Laptop,
   Timer,
   StretchHorizontal,
+  ArrowUpDown,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 
 interface PerformanceTableProps {
   data: PagePerformance[];
@@ -117,7 +119,54 @@ function VitalsHeader() {
 }
 
 
+
 export function PerformanceTable({ data }: PerformanceTableProps) {
+  const [sortColumn, setSortColumn] = useState<keyof PagePerformance | null>(
+    null
+  );
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(
+    null
+  );
+
+  const sortedData = useMemo(() => {
+    if (!sortColumn || !sortDirection) return data;
+
+    const sorted = [...data].sort((a, b) => {
+      const aValue = a[sortColumn];
+      const bValue = b[sortColumn];
+
+      // Handle timestamp sorting separately
+      if (sortColumn === 'timestamp') {
+        const getTimestamp = (value: any) => {
+          if (value && typeof value === 'object' && 'seconds' in value && typeof value.seconds === 'number') {
+            return new Date(value.seconds * 1000).getTime();
+          }
+          return 0;
+        };
+        const aTime = getTimestamp(aValue);
+        const bTime = getTimestamp(bValue);
+        if (aTime < bTime) return sortDirection === 'asc' ? -1 : 1;
+        if (aTime > bTime) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [data, sortColumn, sortDirection]);
+
+  const handleSort = (column: keyof PagePerformance) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   return (
     <TooltipProvider>
       <Tabs defaultValue="mobile">
@@ -135,11 +184,19 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px] font-bold">Page</TableHead>
+                  <TableHead
+                    className="font-bold cursor-pointer"
+                    onClick={() => handleSort('timestamp')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Timestamp <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
                   <VitalsHeader />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((page) => (
+                {sortedData.map((page) => (
                   <TableRow key={page.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
@@ -155,6 +212,13 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
                         </Link>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {typeof page.timestamp === 'object' && page.timestamp !== null && 'seconds' in page.timestamp
+                        ? new Date((page.timestamp as { seconds: number }).seconds * 1000).toLocaleString()
+                        : typeof page.timestamp === 'string'
+                        ? page.timestamp
+                        : ''}
+                    </TableCell>
                     <VitalsRow performance={page.mobile} />
                   </TableRow>
                 ))}
@@ -168,11 +232,19 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px] font-bold">Page</TableHead>
+                   <TableHead
+                    className="font-bold cursor-pointer"
+                    onClick={() => handleSort('timestamp')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Timestamp <ArrowUpDown className="h-4 w-4" />
+                    </div>
+                  </TableHead>
                   <VitalsHeader />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((page) => (
+                {sortedData.map((page) => (
                   <TableRow key={page.id}>
                     <TableCell className="font-medium">
                        <div className="flex flex-col">
@@ -187,6 +259,13 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
                            <ExternalLink className="h-3 w-3" />
                         </Link>
                       </div>
+                    </TableCell>
+                     <TableCell>
+                      {typeof page.timestamp === 'object' && page.timestamp !== null && 'seconds' in page.timestamp
+                        ? new Date((page.timestamp as { seconds: number }).seconds * 1000).toLocaleString()
+                        : typeof page.timestamp === 'string'
+                        ? page.timestamp
+                        : ''}
                     </TableCell>
                     <VitalsRow performance={page.desktop} />
                   </TableRow>

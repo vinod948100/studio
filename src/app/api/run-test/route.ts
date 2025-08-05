@@ -3,6 +3,8 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { PageToTest } from '@/lib/types';
 import { runLighthouseTest } from '@/ai/flows/run-lighthouse-flow';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 
 export async function POST(request: Request) {
@@ -27,6 +29,7 @@ export async function POST(request: Request) {
       reportPath: page.reportPath,
       url: page.url,
       lastUpdated: new Date().toISOString(),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Add server timestamp
       ...lighthouseData,
     };
     

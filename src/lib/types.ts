@@ -14,6 +14,7 @@ export type PagePerformance = {
   lastUpdated: string;
   mobile: NetworkPerformance;
   desktop: NetworkPerformance;
+  timestamp: string; // Added timestamp field
 };
 
 export type PageToTest = {
