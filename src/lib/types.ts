@@ -1,9 +1,9 @@
 import type { RunLighthouseTestOutput } from './lighthouse-types';
 
-export type PerformanceMetrics = RunLighthouseTestOutput['mobile']['4g'];
+export type PerformanceMetrics = RunLighthouseTestOutput['mobile']['fourG'];
 
 export type NetworkPerformance = {
-  '4g': PerformanceMetrics;
+  fourG: PerformanceMetrics;
   fast3g: PerformanceMetrics;
 }
 
@@ -14,7 +14,7 @@ export type PagePerformance = {
   lastUpdated: string;
   mobile: NetworkPerformance;
   desktop: NetworkPerformance;
-  timestamp: string; // Added timestamp field
+  timestamp: string; 
 };
 
 export type PageToTest = {
@@ -28,3 +28,5 @@ export type TestResult = {
   log: string;
   attempt: number;
 }
+
+export type SiteKey = 'truckopedia' | 'eform2290' | 'emcs150';

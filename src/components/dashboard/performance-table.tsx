@@ -37,49 +37,42 @@ interface PerformanceTableProps {
 }
 
 function VitalsRow({ performance }: { performance: NetworkPerformance }) {
+  const formatValue = (value: number | undefined, isCls = false) => {
+    if (value === undefined || value === null) return '-';
+    return isCls ? value.toFixed(4) : value.toFixed(2);
+  };
+  
   return (
     <>
       <TableCell className="text-center">
-        {performance && performance['4g'] ? (
- <ScoreBadge
- score={parseFloat(performance['4g'].performanceScore.toFixed(2))}
- />
- ) : (
- '-'
- )}
+        <ScoreBadge score={performance?.fourG?.performanceScore ?? 0} />
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance['4g'] ? `${performance['4g'].fcp}s` : '-'}
+        {formatValue(performance?.fourG?.fcp)}s
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance['4g'] ? `${performance['4g'].lcp}s` : '-'}
+        {formatValue(performance?.fourG?.lcp)}s
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance['4g'] ? `${performance['4g'].tbt}ms` : '-'}
+        {formatValue(performance?.fourG?.tbt)}ms
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance['4g'] ? performance['4g'].cls : '-'}
+        {formatValue(performance?.fourG?.cls, true)}
       </TableCell>
       <TableCell className="text-center">
-        {performance && performance.fast3g ? (
- <ScoreBadge
- score={parseFloat(performance.fast3g.performanceScore.toFixed(2))}
- />
- ) : (
- '-'
- )}
+         <ScoreBadge score={performance?.fast3g?.performanceScore ?? 0} />
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance.fast3g ? `${performance.fast3g.fcp}s` : '-'}
+        {formatValue(performance?.fast3g?.fcp)}s
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance.fast3g ? `${performance.fast3g.lcp}s` : '-'}
+        {formatValue(performance?.fast3g?.lcp)}s
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance.fast3g ? `${performance.fast3g.tbt}ms` : '-'}
+        {formatValue(performance?.fast3g?.tbt)}ms
       </TableCell>
       <TableCell className="text-center tabular-nums">
- {performance && performance.fast3g ? performance.fast3g.cls : '-'}
+        {formatValue(performance?.fast3g?.cls, true)}
       </TableCell>
     </>
   );
@@ -130,47 +123,34 @@ function VitalsHeader() {
   );
 }
 
-
-
 export function PerformanceTable({ data }: PerformanceTableProps) {
-  const [sortColumn, setSortColumn] = useState<keyof PagePerformance | null>(
-    null
-  );
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(
-    null
-  );
+  const [sortColumn, setSortColumn] = useState<keyof PagePerformance | 'lastUpdated'>('lastUpdated');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const sortedData = useMemo(() => {
     if (!sortColumn || !sortDirection) return data;
 
-    const sorted = [...data].sort((a, b) => {
-      const aValue = a[sortColumn];
-      const bValue = b[sortColumn];
+    return [...data].sort((a, b) => {
+        let aValue, bValue;
 
-      // Handle timestamp sorting separately
-      if (sortColumn === 'timestamp') {
-        const getTimestamp = (value: any) => {
-          if (value && typeof value === 'object' && 'seconds' in value && typeof value.seconds === 'number') {
-            return new Date(value.seconds * 1000).getTime();
-          }
-          return 0;
-        };
-        const aTime = getTimestamp(aValue);
-        const bTime = getTimestamp(bValue);
-        if (aTime < bTime) return sortDirection === 'asc' ? -1 : 1;
-        if (aTime > bTime) return sortDirection === 'asc' ? 1 : -1;
+        if (sortColumn === 'lastUpdated') {
+            aValue = new Date(a.lastUpdated).getTime();
+            bValue = new Date(b.lastUpdated).getTime();
+        } else {
+            aValue = a[sortColumn];
+            bValue = b[sortColumn];
+        }
+
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
         return 0;
-      }
-
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
     });
-
-    return sorted;
   }, [data, sortColumn, sortDirection]);
 
-  const handleSort = (column: keyof PagePerformance) => {
+  const handleSort = (column: keyof PagePerformance | 'lastUpdated') => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -178,6 +158,13 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
       setSortDirection('asc');
     }
   };
+
+  const getSortIndicator = (column: keyof PagePerformance | 'lastUpdated') => {
+    if (sortColumn === column) {
+        return sortDirection === 'asc' ? '▲' : '▼';
+    }
+    return <ArrowUpDown className="h-4 w-4" />;
+  }
 
   return (
     <TooltipProvider>
@@ -190,102 +177,76 @@ export function PerformanceTable({ data }: PerformanceTableProps) {
             <Laptop className="mr-2 h-4 w-4" /> Desktop
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="mobile">
-          <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border mt-2">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[200px] font-bold">Page</TableHead>
-                  <TableHead
-                    className="font-bold cursor-pointer"
-                    onClick={() => handleSort('timestamp')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Timestamp <ArrowUpDown className="h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <VitalsHeader />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedData.map((page) => (
-                  <TableRow key={page.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span className="font-bold">{page.reportPath}</span>
-                        <Link
-                          href={page.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
-                        >
-                          {page.url}
-                          <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {typeof page.timestamp === 'object' && page.timestamp !== null && 'seconds' in page.timestamp
-                        ? new Date((page.timestamp as { seconds: number }).seconds * 1000).toLocaleString()
-                        : typeof page.timestamp === 'string'
-                        ? page.timestamp
-                        : ''}
-                    </TableCell>
-                    <VitalsRow performance={page.mobile} />
-                  </TableRow>
-                ))}
-              </TableBody>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead className="min-w-[200px] font-bold">Page</TableHead>
+                    <TableHead
+                        className="font-bold cursor-pointer"
+                        onClick={() => handleSort('lastUpdated')}
+                    >
+                        <div className="flex items-center gap-1">
+                            Last Updated {getSortIndicator('lastUpdated')}
+                        </div>
+                    </TableHead>
+                    <VitalsHeader />
+                    </TableRow>
+                </TableHeader>
+                <TabsContent value="mobile">
+                    <TableBody>
+                        {sortedData.map((page) => (
+                        <TableRow key={page.id + '-mobile'}>
+                            <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                                <span className="font-bold">{page.reportPath}</span>
+                                <Link
+                                href={page.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+                                >
+                                {page.url}
+                                <ExternalLink className="h-3 w-3" />
+                                </Link>
+                            </div>
+                            </TableCell>
+                            <TableCell>
+                               {new Date(page.lastUpdated).toLocaleString()}
+                            </TableCell>
+                            <VitalsRow performance={page.mobile} />
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                </TabsContent>
+                <TabsContent value="desktop">
+                     <TableBody>
+                        {sortedData.map((page) => (
+                        <TableRow key={page.id + '-desktop'}>
+                            <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                                <span className="font-bold">{page.reportPath}</span>
+                                <Link
+                                href={page.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
+                                >
+                                {page.url}
+                                <ExternalLink className="h-3 w-3" />
+                                </Link>
+                            </div>
+                            </TableCell>
+                            <TableCell>
+                                {new Date(page.lastUpdated).toLocaleString()}
+                            </TableCell>
+                            <VitalsRow performance={page.desktop} />
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                </TabsContent>
             </Table>
-          </div>
-        </TabsContent>
-        <TabsContent value="desktop">
-          <div className="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[200px] font-bold">Page</TableHead>
-                   <TableHead
-                    className="font-bold cursor-pointer"
-                    onClick={() => handleSort('timestamp')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Timestamp <ArrowUpDown className="h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <VitalsHeader />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedData.map((page) => (
-                  <TableRow key={page.id}>
-                    <TableCell className="font-medium">
-                       <div className="flex flex-col">
-                        <span className="font-bold">{page.reportPath}</span>
-                        <Link
-                          href={page.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
-                        >
-                          {page.url}
-                           <ExternalLink className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </TableCell>
-                     <TableCell>
-                      {typeof page.timestamp === 'object' && page.timestamp !== null && 'seconds' in page.timestamp
-                        ? new Date((page.timestamp as { seconds: number }).seconds * 1000).toLocaleString()
-                        : typeof page.timestamp === 'string'
-                        ? page.timestamp
-                        : ''}
-                    </TableCell>
-                    <VitalsRow performance={page.desktop} />
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
+        </div>
       </Tabs>
     </TooltipProvider>
   );

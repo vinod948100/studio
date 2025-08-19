@@ -24,8 +24,8 @@ import {
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
-import { extractSitemapUrls } from '@/lib/sitemap';
 import { useToast } from '@/hooks/use-toast';
+import { extractSitemapUrls } from '@/ai/flows/sitemap-flow';
 
 interface TestRunnerProps {
   onComplete: () => void;
@@ -34,7 +34,7 @@ interface TestRunnerProps {
 export function TestRunner({ onComplete }: TestRunnerProps) {
   const [results, setResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [sitemapUrl, setSitemapUrl] = useState('https://www.truckopedia.com/sitemap.xml');
+  const [sitemapUrl, setSitemapUrl] = useState('');
   const [isFetchingPages, setIsFetchingPages] = useState(false);
   const { toast } = useToast();
 
@@ -71,7 +71,6 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
         } catch (e) {
           console.error(`Received non-JSON error response from server for ${test.page.url}. Status: ${response.status}`);
         }
-        // Directly update the result with the failure and return, no more throwing.
         updateResult(index, { status: 'failed', log: errorMessage });
         return; 
       }
@@ -97,6 +96,11 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
           title: "Sitemap Error",
           description: "Could not fetch any pages from the sitemap. Please check the URL and try again.",
         })
+      } else {
+        toast({
+            title: "Sitemap Scanned",
+            description: `Found ${pages.length} pages. Ready to run tests.`,
+        });
       }
       setResults(pages.map(page => ({ page, status: 'pending', log: 'Waiting to start...', attempt: 0 })));
     } catch (error: any) {
@@ -139,6 +143,7 @@ export function TestRunner({ onComplete }: TestRunnerProps) {
   const handleReset = () => {
     setResults([]);
     setIsRunning(false);
+    setSitemapUrl('');
   }
 
   const getStatusIcon = (status: TestResult['status']) => {

@@ -3,11 +3,16 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { PageToTest } from '@/lib/types';
 import { runLighthouseTest } from '@/ai/flows/run-lighthouse-flow';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
 
 
 export async function POST(request: Request) {
+  // Increase timeout for serverless function
+  // In a real environment, this might be configured in vercel.json or similar
+  const longTimeoutRequest = request as any;
+  if (longTimeoutRequest.setMaxDuration) {
+    longTimeoutRequest.setMaxDuration(300); // 5 minutes
+  }
+
   try {
     const { page }: { page: PageToTest } = await request.json();
 
@@ -15,10 +20,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Invalid page data provided.' }, { status: 400 });
     }
 
-    // Run the actual Lighthouse test using the Genkit flow
     const lighthouseData = await runLighthouseTest({ url: page.url });
 
-    // Handle the case where the Lighthouse flow failed for the URL
     if (!lighthouseData) {
       const errorMessage = `Lighthouse tests failed for ${page.url}. The page may be inaccessible or timed out.`;
       console.error(errorMessage);
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
       reportPath: page.reportPath,
       url: page.url,
       lastUpdated: new Date().toISOString(),
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Add server timestamp
+      timestamp: new Date().toISOString(), 
       ...lighthouseData,
     };
     
@@ -44,8 +47,6 @@ export async function POST(request: Request) {
     let errorMessage = 'An unknown internal server error occurred.';
     if (error.message) {
       errorMessage = error.message;
-    } else if (error.details) {
-      errorMessage = error.details;
     }
     
     return NextResponse.json({ message: errorMessage }, { status: 500 });

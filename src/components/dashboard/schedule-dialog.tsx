@@ -23,31 +23,42 @@ import { Calendar, Clock, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import axios from 'axios';
+import { SITES } from '@/lib/sites';
+import { SiteKey } from '@/lib/types';
 
 export function ScheduleDialog() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [site, setSite] = useState<SiteKey | undefined>();
   const [frequency, setFrequency] = useState('daily');
   const [time, setTime] = useState('03:00');
 
   const handleSave = async () => {
+    if (!site) {
+      toast({
+        variant: 'destructive',
+        title: 'Site Not Selected',
+        description: 'Please select a site to schedule.',
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       await axios.post('/api/schedule-run', {
+        site,
         frequency,
         time,
         timezone: 'IST',
       });
       toast({
         title: 'Schedule Saved',
-        description: `Your performance tests are now scheduled to run ${frequency} at ${time} IST.`,
+        description: `Your performance tests for ${SITES[site].name} are now scheduled to run ${frequency} at ${time} IST.`,
       });
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Failed to Save Schedule',
-        description:
-          'Could not save the schedule. Please try again later.',
+        description: 'Could not save the schedule. Please try again later.',
       });
     } finally {
       setIsSaving(false);
@@ -66,10 +77,28 @@ export function ScheduleDialog() {
         <DialogHeader>
           <DialogTitle className="font-headline">Schedule Tests</DialogTitle>
           <DialogDescription>
-            Set up a recurring schedule to automatically run performance tests.
+            Set up a recurring schedule to automatically run performance tests for a specific site.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="site" className="text-right">
+              Site
+            </Label>
+            <Select
+              onValueChange={(value) => setSite(value as SiteKey)}
+              value={site}
+            >
+              <SelectTrigger id="site" className="col-span-3">
+                <SelectValue placeholder="Select a site" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(SITES) as SiteKey[]).map((key) => (
+                    <SelectItem key={key} value={key}>{SITES[key].name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="frequency" className="text-right">
               Frequency
@@ -103,7 +132,7 @@ export function ScheduleDialog() {
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleSave} disabled={isSaving}>
+          <Button type="submit" onClick={handleSave} disabled={isSaving || !site}>
             {isSaving ? (
               <Loader className="mr-2 h-4 w-4 animate-spin" />
             ) : (

@@ -97,11 +97,11 @@ const runLighthouseTestFlow = ai.defineFlow(
 
     return {
       mobile: {
-        '4g': mobileMetrics || emptyMetrics,
+        fourG: mobileMetrics || emptyMetrics,
         fast3g: mobileMetrics || emptyMetrics,
       },
       desktop: {
-        '4g': desktopMetrics || emptyMetrics,
+        fourG: desktopMetrics || emptyMetrics,
         fast3g: desktopMetrics || emptyMetrics,
       },
     };

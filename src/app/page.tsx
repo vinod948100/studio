@@ -7,96 +7,97 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Flame, LineChart, Table } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
-import type { PagePerformance } from '@/lib/types';
+import { Flame, LineChart, Table, BotMessageSquare, FileDown } from 'lucide-react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import type { PagePerformance, SiteKey } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TestRunner } from '@/components/dashboard/test-runner';
 import { getPerformanceData } from '@/lib/data';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { subDays } from 'date-fns';
+import { subDays, format } from 'date-fns';
 import { PerformanceChart } from '@/components/dashboard/performance-chart';
 import { ScheduleDialog } from '@/components/dashboard/schedule-dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from "@/components/ui/select"
+import { SITES } from '@/lib/sites';
+import { Button } from '@/components/ui/button';
+import { AutomatedTestRunner } from '@/components/dashboard/automated-test-runner';
+import { cn } from '@/lib/utils';
+import { exportToCsv } from '@/lib/utils';
 
 export default function Home() {
+  const [activeSite, setActiveSite] = useState<SiteKey | null>(null);
   const [allData, setAllData] = useState<PagePerformance[] | null>(null);
-  const [filteredData, setFilteredData] = useState<PagePerformance[] | null>(
-    null
-  );
-  const [activeTab, setActiveTab] = useState('runner');
-  const [reportView, setReportView] = useState('table');
+  const [reportView, setReportView] = useState('table'); // 'table' or 'chart'
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
     to: new Date(),
   });
-  const [selectedPage, setSelectedPage] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTestRunning, setIsTestRunning] = useState(false);
 
-  const fetchData = async () => {
-    setAllData(null);
-    setFilteredData(null);
-    const performanceData = await getPerformanceData();
-    setAllData(performanceData);
-  };
-
+  // Fetch all data once when the component mounts
   useEffect(() => {
-    fetchData();
+    const fetchAllData = async () => {
+      setIsLoading(true);
+      const performanceData = await getPerformanceData();
+      setAllData(performanceData);
+      setIsLoading(false);
+    };
+    fetchAllData();
   }, []);
 
-  useEffect(() => {
-    if (allData) {
-      const filtered = allData.filter((item) => {
-        const itemDate = new Date(item.lastUpdated);
-        if (dateRange?.from && itemDate < dateRange.from) return false;
-        // Set 'to' date to the end of the day
-        if (dateRange?.to) {
-          const toDate = new Date(dateRange.to);
-          toDate.setHours(23, 59, 59, 999);
-          if (itemDate > toDate) return false;
-        }
-        // Filter by selected page if a page is selected
-        if (selectedPage !== 'all' && item.reportPath !== selectedPage) return false;
+  const handleTestComplete = useCallback(async () => {
+    setIsTestRunning(false);
+    setIsLoading(true);
+    // Refetch all data to include the new test results
+    const performanceData = await getPerformanceData();
+    setAllData(performanceData);
+    setIsLoading(false);
+  }, []);
 
-        return true;
-      });
-      setFilteredData(filtered);
+  // Memoized and filtered data based on the active site and date range
+  const siteFilteredData = useMemo(() => {
+    if (!allData || !activeSite) {
+      return [];
     }
-  }, [allData, dateRange, selectedPage]); // Add selectedPage to dependencies
 
-  const handleTestRunCompletion = () => {
-    fetchData();
-    setActiveTab('reports');
+    const sitePrefix = SITES[activeSite].reportPathPrefix;
+
+    return allData.filter((item) => {
+      // 1. Filter by site
+      if (!item.reportPath.startsWith(sitePrefix)) {
+        return false;
+      }
+      
+      // 2. Filter by date range
+      const itemDate = new Date(item.lastUpdated);
+      if (dateRange?.from && itemDate < dateRange.from) return false;
+      if (dateRange?.to) {
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        if (itemDate > toDate) return false;
+      }
+      
+      return true;
+    });
+  }, [allData, activeSite, dateRange]);
+
+  const handleSiteSelect = (site: SiteKey) => {
+    setActiveSite(site);
+    // If we have history, don't auto-run tests. Let user decide.
+    // For this implementation, we will auto-run.
+    setIsTestRunning(true);
   };
-
-  const uniquePagesList = useMemo(() => Array.from(new Set(allData?.map(item => item.reportPath) || [])), [allData]);
-
-  // Calculate averages based on filteredData
-  const mobileAverage =
-    filteredData && filteredData.length > 0
-      ? Math.round(
-          filteredData.reduce(
- (acc, curr) => acc + (curr.mobile && curr.mobile['4g'] ? curr.mobile['4g'].performanceScore : 0), 0
-          ) / filteredData.length
-        )
-      : 0;
-
-  const desktopAverage =
-    filteredData && filteredData.length > 0
-      ? Math.round(
-          filteredData.reduce(
-            (acc, curr) => acc + (curr.desktop && curr.desktop['4g'] ? curr.desktop['4g'].performanceScore : 0),
-            0
-          ) / filteredData.length
-        )
-      : 0;
+  
+  const handleExport = () => {
+    if (!activeSite) return;
+    
+    const from = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
+    const to = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'today';
+    const filename = `${activeSite}-performance-report-${from}-to-${to}.csv`;
+    
+    exportToCsv(siteFilteredData, filename);
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/20">
@@ -104,31 +105,52 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <Flame className="h-6 w-6 text-primary" />
           <h1 className="font-headline text-xl font-bold tracking-tighter">
-            Performance Monitoring
+            Web Vitals Watcher
           </h1>
         </div>
-        <div className="ml-auto">
+        <nav className="ml-8 flex items-center gap-2">
+            {(Object.keys(SITES) as SiteKey[]).map((siteKey) => (
+                <Button 
+                    key={siteKey}
+                    variant={activeSite === siteKey ? "secondary" : "ghost"}
+                    onClick={() => handleSiteSelect(siteKey)}
+                    className={cn(
+                        "font-semibold",
+                        activeSite === siteKey && "shadow-sm"
+                    )}
+                >
+                    {SITES[siteKey].name}
+                </Button>
+            ))}
+        </nav>
+        <div className="ml-auto flex items-center gap-4">
           <ScheduleDialog />
         </div>
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2 md:w-96">
-            <TabsTrigger value="runner">Run Tests</TabsTrigger>
-            <TabsTrigger value="reports">Performance Reports</TabsTrigger>
-          </TabsList>
-          <TabsContent value="runner">
-            <TestRunner onComplete={handleTestRunCompletion} />
-          </TabsContent>
-          <TabsContent value="reports">
+        {!activeSite && (
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
+                <div className="flex flex-col items-center gap-2 text-center">
+                    <BotMessageSquare className="h-16 w-16 text-muted-foreground" />
+                    <h3 className="text-2xl font-bold tracking-tight font-headline">
+                        Welcome to Web Vitals Watcher
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                        Select a site above to run tests and view performance reports.
+                    </p>
+                </div>
+            </div>
+        )}
+        
+        {isTestRunning && activeSite && (
+            <AutomatedTestRunner site={activeSite} onComplete={handleTestComplete} />
+        )}
+        
+        {!isTestRunning && activeSite && (
             <Card>
               <CardHeader>
                 <CardTitle className="font-headline text-2xl">
-                  Performance Reports
+                  Performance Report: {SITES[activeSite].name}
                 </CardTitle>
                 <CardDescription>
                   Web vitals and performance scores for your pages.
@@ -136,89 +158,54 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <Tabs
-                    value={reportView}
-                    onValueChange={setReportView}
-                    className="w-full md:w-auto"
-                  >
-                    <TabsList>
-                      <TabsTrigger value="table">
-                        <Table className="mr-2" /> Table View
-                      </TabsTrigger>
-                      <TabsTrigger value="chart">
-                        <LineChart className="mr-2" /> Chart View
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                   {reportView === 'table' && (
-                     <div className="flex items-center gap-4">
-                       <Select onValueChange={setSelectedPage} value={selectedPage}>
-                              <SelectTrigger className="w-[180px]">
-                                  <SelectValue placeholder="Select " />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="all">All Pages</SelectItem>
-                                  {uniquePagesList.map(page => (
-                                      <SelectItem key={page} value={page}>{page}</SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                          <DateRangePicker
-                              date={dateRange}
-                              onDateChange={setDateRange}
-                          />
-                     </div>
-                   )}
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                    <Tabs
+                      value={reportView}
+                      onValueChange={setReportView}
+                      className="w-full md:w-auto"
+                    >
+                      <TabsList>
+                        <TabsTrigger value="table">
+                          <Table className="mr-2" /> Table View
+                        </TabsTrigger>
+                        <TabsTrigger value="chart">
+                          <LineChart className="mr-2" /> Chart View
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <Button variant="outline" onClick={handleExport} disabled={siteFilteredData.length === 0}>
+                      <FileDown className="mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
 
+                  <DateRangePicker
+                    date={dateRange}
+                    onDateChange={setDateRange}
+                  />
                 </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Avg. Mobile Score
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{mobileAverage}</div>
-                      <p className="text-xs text-muted-foreground">
-                        Average score for {selectedPage ? selectedPage : 'all pages'} in selected date range
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        Avg. Desktop Score
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{desktopAverage}</div>
-                      <p className="text-xs text-muted-foreground">
-                         Average score for {selectedPage ? selectedPage : 'all pages'} in selected date range
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {filteredData ? (
-                  reportView === 'table' ? (
-                    <PerformanceTable data={filteredData} />
-                  ) : (
-                    <PerformanceChart data={filteredData} dateRange={dateRange} />
-                  )
-                ) : (
+                {isLoading ? (
                   <div className="space-y-4">
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-20 w-full" />
                     <Skeleton className="h-20 w-full" />
                     <Skeleton className="h-20 w-full" />
                   </div>
+                ) : siteFilteredData.length > 0 ? (
+                  reportView === 'table' ? (
+                    <PerformanceTable data={siteFilteredData} />
+                  ) : (
+                    <PerformanceChart data={siteFilteredData} dateRange={dateRange} />
+                  )
+                ) : (
+                  <div className="text-center py-10 text-muted-foreground">
+                    No performance data found for {SITES[activeSite].name} in the selected date range.
+                  </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+        )}
+        
       </main>
       <footer className="border-t bg-background/80 p-4 text-center text-sm text-muted-foreground">
         <p>Built for performance monitoring.</p>

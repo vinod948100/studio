@@ -21,11 +21,11 @@ export type PerformanceMetrics = z.infer<typeof PerformanceMetricsSchema>;
 // Define the output schema for the Lighthouse flow
 export const RunLighthouseTestOutputSchema = z.object({
   mobile: z.object({
-    '4g': PerformanceMetricsSchema,
+    fourG: PerformanceMetricsSchema,
     fast3g: PerformanceMetricsSchema,
   }),
   desktop: z.object({
-    '4g': PerformanceMetricsSchema,
+    fourG: PerformanceMetricsSchema,
     fast3g: PerformanceMetricsSchema,
   }),
 });
