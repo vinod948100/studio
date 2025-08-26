@@ -12,6 +12,7 @@ export type PagePerformance = {
   reportPath: string;
   url: string;
   lastUpdated: string;
+  application: SiteKey;
   mobile: NetworkPerformance;
   desktop: NetworkPerformance;
   timestamp: string; 

@@ -1,3 +1,4 @@
+// page.tsx (modified)
 'use client';
 import { PerformanceTable } from '@/components/dashboard/performance-table';
 import {
@@ -23,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { AutomatedTestRunner } from '@/components/dashboard/automated-test-runner';
 import { cn } from '@/lib/utils';
 import { exportToCsv } from '@/lib/utils';
+import { ScoreBadge } from '@/components/dashboard/score-badge';
 
 export default function Home() {
   const [activeSite, setActiveSite] = useState<SiteKey | null>(null);
@@ -32,6 +34,7 @@ export default function Home() {
     from: subDays(new Date(), 29),
     to: new Date(),
   });
+  const [selectedPage, setSelectedPage] = useState<string | 'all'>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
 
@@ -49,14 +52,13 @@ export default function Home() {
   const handleTestComplete = useCallback(async () => {
     setIsTestRunning(false);
     setIsLoading(true);
-    // Refetch all data to include the new test results
     const performanceData = await getPerformanceData();
     setAllData(performanceData);
     setIsLoading(false);
   }, []);
 
-  // Memoized and filtered data based on the active site and date range
-  const siteFilteredData = useMemo(() => {
+  // Memoized data filtered by site and date range (before page filter)
+  const siteDataBeforePageFilter = useMemo(() => {
     if (!allData || !activeSite) {
       return [];
     }
@@ -64,12 +66,10 @@ export default function Home() {
     const sitePrefix = SITES[activeSite].reportPathPrefix;
 
     return allData.filter((item) => {
-      // 1. Filter by site
       if (!item.reportPath.startsWith(sitePrefix)) {
         return false;
       }
       
-      // 2. Filter by date range
       const itemDate = new Date(item.lastUpdated);
       if (dateRange?.from && itemDate < dateRange.from) return false;
       if (dateRange?.to) {
@@ -82,10 +82,53 @@ export default function Home() {
     });
   }, [allData, activeSite, dateRange]);
 
+  // Unique report paths for dropdown
+  const uniquePages = useMemo(() => {
+    const paths = new Set(siteDataBeforePageFilter.map((item) => item.reportPath));
+    return Array.from(paths).sort();
+  }, [siteDataBeforePageFilter]);
+
+  // Memoized and filtered data based on the active site, date range, and selected page
+  const siteFilteredData = useMemo(() => {
+    return siteDataBeforePageFilter.filter((item) => {
+      if (selectedPage !== 'all' && item.reportPath !== selectedPage) {
+        return false;
+      }
+      return true;
+    });
+  }, [siteDataBeforePageFilter, selectedPage]);
+
+  // Calculate average performance scores for mobile and desktop
+  const averageScores = useMemo(() => {
+    if (!siteFilteredData.length) {
+      return { mobile: null, desktop: null };
+    }
+
+    let mobileTotal = 0;
+    let desktopTotal = 0;
+    let mobileCount = 0;
+    let desktopCount = 0;
+
+    siteFilteredData.forEach((item) => {
+      if (item.mobile?.fourG?.performanceScore !== undefined && item.mobile?.fourG?.performanceScore !== null) {
+        mobileTotal += item.mobile.fourG.performanceScore;
+        mobileCount++;
+      }
+      if (item.desktop?.fast3g?.performanceScore !== undefined && item.desktop?.fast3g?.performanceScore !== null) {
+        desktopTotal += item.desktop.fast3g.performanceScore;
+        desktopCount++;
+      }
+    });
+
+    return {
+      mobile: mobileCount > 0 ? Number((mobileTotal / mobileCount).toFixed(2)) : null,
+      desktop: desktopCount > 0 ? Number((desktopTotal / desktopCount).toFixed(2)) : null,
+    };
+  }, [siteFilteredData]);
+
   const handleSiteSelect = (site: SiteKey) => {
     setActiveSite(site);
-    // If we have history, don't auto-run tests. Let user decide.
-    // For this implementation, we will auto-run.
+    setSelectedPage('all'); // Reset page selection when site changes
     setIsTestRunning(true);
   };
   
@@ -109,19 +152,19 @@ export default function Home() {
           </h1>
         </div>
         <nav className="ml-8 flex items-center gap-2">
-            {(Object.keys(SITES) as SiteKey[]).map((siteKey) => (
-                <Button 
-                    key={siteKey}
-                    variant={activeSite === siteKey ? "secondary" : "ghost"}
-                    onClick={() => handleSiteSelect(siteKey)}
-                    className={cn(
-                        "font-semibold",
-                        activeSite === siteKey && "shadow-sm"
-                    )}
-                >
-                    {SITES[siteKey].name}
-                </Button>
-            ))}
+          {(Object.keys(SITES) as SiteKey[]).map((siteKey) => (
+            <Button 
+              key={siteKey}
+              variant={activeSite === siteKey ? "secondary" : "ghost"}
+              onClick={() => handleSiteSelect(siteKey)}
+              className={cn(
+                "font-semibold",
+                activeSite === siteKey && "shadow-sm"
+              )}
+            >
+              {SITES[siteKey].name}
+            </Button>
+          ))}
         </nav>
         <div className="ml-auto flex items-center gap-4">
           <ScheduleDialog />
@@ -129,83 +172,119 @@ export default function Home() {
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {!activeSite && (
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
-                <div className="flex flex-col items-center gap-2 text-center">
-                    <BotMessageSquare className="h-16 w-16 text-muted-foreground" />
-                    <h3 className="text-2xl font-bold tracking-tight font-headline">
-                        Welcome to Web Vitals Watcher
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                        Select a site above to run tests and view performance reports.
-                    </p>
-                </div>
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <BotMessageSquare className="h-16 w-16 text-muted-foreground" />
+              <h3 className="text-2xl font-bold tracking-tight font-headline">
+                Welcome to Web Vitals Watcher
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Select a site above to run tests and view performance reports.
+              </p>
             </div>
+          </div>
         )}
         
         {isTestRunning && activeSite && (
-            <AutomatedTestRunner site={activeSite} onComplete={handleTestComplete} />
+          <AutomatedTestRunner site={activeSite} onComplete={handleTestComplete} />
         )}
         
         {!isTestRunning && activeSite && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-headline text-2xl">
-                  Performance Report: {SITES[activeSite].name}
-                </CardTitle>
-                <CardDescription>
-                  Web vitals and performance scores for your pages.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                    <Tabs
-                      value={reportView}
-                      onValueChange={setReportView}
-                      className="w-full md:w-auto"
-                    >
-                      <TabsList>
-                        <TabsTrigger value="table">
-                          <Table className="mr-2" /> Table View
-                        </TabsTrigger>
-                        <TabsTrigger value="chart">
-                          <LineChart className="mr-2" /> Chart View
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    <Button variant="outline" onClick={handleExport} disabled={siteFilteredData.length === 0}>
-                      <FileDown className="mr-2" />
-                      Export CSV
-                    </Button>
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl">
+                Performance Report: {SITES[activeSite].name}
+              </CardTitle>
+              <CardDescription>
+                Web vitals and performance scores for your pages.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Display Average Scores */}
+              {siteFilteredData.length > 0 && (
+                <div className="flex flex-col gap-2 border rounded-lg p-4 bg-background">
+                  <h3 className="text-lg font-semibold">Average Performance Scores</h3>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Mobile: </span>
+                      {averageScores.mobile !== null ? (
+                        <ScoreBadge
+                          score={averageScores.mobile}
+                          metricType="performance"
+                          deviceType="mobile"
+                        />
+                      ) : (
+                        <span>No data</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Desktop: </span>
+                      {averageScores.desktop !== null ? (
+                        <ScoreBadge
+                          score={averageScores.desktop}
+                          metricType="performance"
+                          deviceType="desktop"
+                        />
+                      ) : (
+                        <span>No data</span>
+                      )}
+                    </div>
                   </div>
-
-                  <DateRangePicker
-                    date={dateRange}
-                    onDateChange={setDateRange}
-                  />
                 </div>
-                {isLoading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : siteFilteredData.length > 0 ? (
-                  reportView === 'table' ? (
-                    <PerformanceTable data={siteFilteredData} />
-                  ) : (
-                    <PerformanceChart data={siteFilteredData} dateRange={dateRange} />
-                  )
+              )}
+              
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                  <Tabs
+                    value={reportView}
+                    onValueChange={setReportView}
+                    className="w-full md:w-auto"
+                  >
+                    <TabsList>
+                      <TabsTrigger value="table">
+                        <Table className="mr-2" /> Table View
+                      </TabsTrigger>
+                      <TabsTrigger value="chart">
+                        <LineChart className="mr-2" /> Chart View
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Button variant="outline" onClick={handleExport} disabled={siteFilteredData.length === 0}>
+                    <FileDown className="mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
+                <DateRangePicker
+                  date={dateRange}
+                  onDateChange={setDateRange}
+                />
+              </div>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : siteFilteredData.length > 0 ? (
+                reportView === 'table' ? (
+                  <PerformanceTable 
+                    data={siteFilteredData} 
+                    uniquePages={uniquePages}
+                    selectedPage={selectedPage}
+                    onPageChange={setSelectedPage}
+                  />
                 ) : (
-                  <div className="text-center py-10 text-muted-foreground">
-                    No performance data found for {SITES[activeSite].name} in the selected date range.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  <PerformanceChart data={siteFilteredData} dateRange={dateRange} />
+                )
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">
+                  No performance data found for {SITES[activeSite].name} in the selected date range.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
-        
       </main>
       <footer className="border-t bg-background/80 p-4 text-center text-sm text-muted-foreground">
         <p>Built for performance monitoring.</p>

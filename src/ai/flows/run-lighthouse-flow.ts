@@ -59,8 +59,8 @@ async function getLighthouseMetrics(url: string, strategy: 'mobile' | 'desktop')
       performanceScore: Math.round(performanceScore),
       fcp: getAuditNumericValue('first-contentful-paint') / 1000, // ms to s
       lcp: getAuditNumericValue('largest-contentful-paint') / 1000, // ms to s
-      tbt: getAuditNumericValue('total-blocking-time'), // ms
-      cls: parseFloat(getAuditNumericValue('cumulative-layout-shift').toFixed(4)),
+      tbt: getAuditNumericValue('total-blocking-time'), // ms to s
+      cls: parseFloat(getAuditNumericValue('cumulative-layout-shift').toFixed(2)),
     };
   } catch (error: any) {
     console.error(`PageSpeed API request failed for ${url} (${strategy}):`, error.response?.data?.error?.message || error.message);
